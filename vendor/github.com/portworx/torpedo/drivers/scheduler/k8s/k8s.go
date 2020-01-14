@@ -117,7 +117,8 @@ func (k *K8s) String() string {
 }
 
 //Init Initialize the driver
-func (k *K8s) Init(specDir, volDriverName, nodeDriverName, secretConfigMap string) error {
+func (k *K8s) Init(specDir, volDriverName, nodeDriverName, storageProvisioner, secretConfigMap string) error {
+	logrus.Infof("RK=> Using storage provisioner %s", volDriverName)
 	nodes, err := k8s_ops.Instance().GetNodes()
 	if err != nil {
 		return err
@@ -129,7 +130,7 @@ func (k *K8s) Init(specDir, volDriverName, nodeDriverName, secretConfigMap strin
 		}
 	}
 
-	k.SpecFactory, err = spec.NewFactory(specDir, k)
+	k.SpecFactory, err = spec.NewFactory(specDir, storageProvisioner, k)
 	if err != nil {
 		return err
 	}
@@ -157,7 +158,7 @@ func (k *K8s) addNewNode(newNode v1.Node) error {
 func (k *K8s) RescanSpecs(specDir string) error {
 	var err error
 	logrus.Infof("Rescanning specs for %v", specDir)
-	k.SpecFactory, err = spec.NewFactory(specDir, k)
+	k.SpecFactory, err = spec.NewFactory(specDir, volume.GetStorageProvisioner(), k)
 	if err != nil {
 		return err
 	}

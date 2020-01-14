@@ -15,7 +15,17 @@ type Factory struct {
 	specParser Parser
 }
 
+// CloudVolDriver Name of the cloud provider's volume driver to be used
+type CloudVolDriver string
+
+const (
+	gcepd CloudVolDriver = "gcepd"
+)
+
 var appSpecFactory = make(map[string]*AppSpec)
+var supportedCloudProviders = map[CloudVolDriver]bool{
+	gcepd: true,
+}
 
 // register registers a new spec with the factory
 func (f *Factory) register(id string, app *AppSpec) {
@@ -23,6 +33,24 @@ func (f *Factory) register(id string, app *AppSpec) {
 		logrus.Infof("Registering app: %v", id)
 		appSpecFactory[id] = app
 	}
+}
+
+// check if cloud provider drivers are being used for provisioning
+func (f *Factory) getCloudProviderIfPresent(specDir, appDir, storageProvisioner string) string {
+	cloudProviderDirList, err := ioutil.ReadDir(path.Join(specDir, appDir))
+	if err != nil {
+		return ""
+	}
+
+	for _, cloudFile := range cloudProviderDirList {
+		logrus.Infof("Looking for cloud dir: %v for storage provisioner %s", cloudFile.Name(), storageProvisioner)
+		// Check if cloud provider vol driver is being used and if specs are present for that vol driver
+		if cloudFile.IsDir() && cloudFile.Name() == storageProvisioner {
+			logrus.Infof("RK=> Found  Cloud dir: %v", cloudFile.Name())
+			return cloudFile.Name()
+		}
+	}
+	return ""
 }
 
 // Get returns a registered application
@@ -56,7 +84,7 @@ func (f *Factory) GetAll() []*AppSpec {
 }
 
 // NewFactory creates a new spec factory
-func NewFactory(specDir string, parser Parser) (*Factory, error) {
+func NewFactory(specDir, volDriverName string, parser Parser) (*Factory, error) {
 	f := &Factory{
 		specDir:    specDir,
 		specParser: parser,
@@ -71,9 +99,17 @@ func NewFactory(specDir string, parser Parser) (*Factory, error) {
 		if file.IsDir() {
 			specID := file.Name()
 
-			logrus.Infof("Parsing: %v...", path.Join(f.specDir, specID))
+			var cloudProviderSpecID string
+			cloudProviderSpecID = f.getCloudProviderIfPresent(f.specDir, specID, volDriverName)
 
-			specs, err := f.specParser.ParseSpecs(path.Join(f.specDir, file.Name()))
+			var specs []interface{}
+			if cloudProviderSpecID != "" {
+				logrus.Infof("Parsing: %v...", path.Join(f.specDir, specID+"/"+cloudProviderSpecID))
+				specs, err = f.specParser.ParseSpecs(path.Join(f.specDir, specID+"/"+cloudProviderSpecID))
+			} else {
+				logrus.Infof("Parsing: %v...", path.Join(f.specDir, specID))
+				specs, err = f.specParser.ParseSpecs(path.Join(f.specDir, specID))
+			}
 			if err != nil {
 				return nil, err
 			}
