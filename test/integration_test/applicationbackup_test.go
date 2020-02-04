@@ -172,10 +172,11 @@ func triggerScaleBackupRestoreTest(
 	appKey []string,
 	appBackupKey []string,
 	appRestoreKey []string,
-	configMap map[string]string,
+	backupLocationType storkv1.BackupLocationType,
 	createBackupLocationFlag bool,
 	backupSuccessExpected bool,
 	backupAllAppsExpected bool,
+	secretName string,
 ) {
 	var appCtxs []*scheduler.Context
 	var appBkps []*storkv1.ApplicationBackup
@@ -202,7 +203,7 @@ func triggerScaleBackupRestoreTest(
 	}
 	// Trigger backups for all apps created
 	for idx, app := range appCtxs {
-		backupLocation, err := createBackupLocation(t, backuplocationPrefix+strconv.Itoa(idx), app.GetID(), storkv1.BackupLocationS3, defaultSecretName)
+		backupLocation, err := createBackupLocation(t, backuplocationPrefix+strconv.Itoa(idx), app.GetID(), backupLocationType, secretName)
 		require.NoError(t, err, "Error creating backuplocation: %s", "backupLocation-"+strconv.Itoa(idx))
 		bkpLocations = append(bkpLocations, backupLocation)
 
@@ -466,10 +467,11 @@ func scaleApplicationBackupRestore(t *testing.T) {
 		[]string{"mysql-1-pvc"},
 		[]string{"mysql-1-pvc"},
 		[]string{restoreName},
-		defaultConfigMap,
+		defaultBackupLocation,
 		true,
 		true,
 		true,
+		defaultSecretName,
 	)
 }
 
