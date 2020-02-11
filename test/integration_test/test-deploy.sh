@@ -117,7 +117,7 @@ fi
 
 KUBEVERSION=$(kubectl version -o json | jq ".serverVersion.gitVersion" -r)
 sed -i 's/<kube_version>/'"$KUBEVERSION"'/g' /specs/stork-scheduler.yaml
-sed -i 's/'stork:.*'/'"$image_name"'/g' /specs/stork-deployment.yaml
+sed  -i 's|'DEV_STORK_IMAGE'|'"$image_name"'|g'  /specs/stork-deployment.yaml
 
 # For integration test mock times
 kubectl delete cm stork-mock-time  -n kube-system || true
